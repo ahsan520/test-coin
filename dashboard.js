@@ -1,297 +1,170 @@
-/* Full client-side dashboard converted for CDN React usage */
+document.addEventListener('DOMContentLoaded', () => {
 
-const { useState, useEffect } = React;
-const {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
-} = Recharts;
+  // --- State ---
+  let coins = JSON.parse(localStorage.getItem('coins')) || [
+    {id: 'bitcoin', symbol: 'BTCUSDT', label: 'Bitcoin (BTC)'},
+    {id: 'ethereum', symbol: 'ETHUSDT', label: 'Ethereum (ETH)'}
+  ];
+  let selectedCoin = localStorage.getItem('selectedCoin') || coins[0].id;
 
-async function fetchCG(coinId, days, interval) {
-  const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=${interval}`;
-  try {
-    const r = await fetch(url);
-    if (!r.ok) return null;
-    return r.json();
-  } catch {
-    return null;
+  // --- Elements ---
+  const coinSelectEl = document.getElementById('coinSelect');
+  const inflowEl = document.getElementById('inflow');
+  const volatilityEl = document.getElementById('volatility');
+  const fundingEl = document.getElementById('funding');
+  const signalEl = document.getElementById('signal');
+  const livePriceEl = document.getElementById('livePrice');
+  const predictedSignalEl = document.getElementById('predictedSignal');
+  const liveChartEl = document.getElementById('liveChart');
+  const coinListEl = document.getElementById('coinList'); // Coin list container
+
+  // Render coin list and dropdown
+  function renderCoinList() {
+    coinListEl.innerHTML = '';
+    coinSelectEl.innerHTML = '';
+    coins.forEach(c => {
+      const div = document.createElement('div');
+      div.textContent = c.label;
+
+      // Create a "Remove" button
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = '×';
+      removeBtn.style.color = 'red';
+      removeBtn.style.marginLeft = '10px';
+      removeBtn.onclick = () => removeCoin(c.id);
+
+      div.appendChild(removeBtn);
+      coinListEl.appendChild(div);
+
+      // Add to the coin select dropdown
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.label;
+      coinSelectEl.appendChild(opt);
+    });
+    coinSelectEl.value = selectedCoin;
   }
-}
 
-function computeVol(prices) {
-  if (!prices || prices.length < 2) return 0;
-  const returns = [];
-  for (let i = 1; i < prices.length; i++)
-    returns.push(Math.log(prices[i][1] / prices[i - 1][1]));
-  const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
-  const variance = returns.reduce((a, b) => a + (b - mean) ** 2, 0) / returns.length;
-  return Math.sqrt(variance);
-}
-
-function decisionSignal(v, funding, inflow) {
-  const score =
-    inflow * 0.4 +
-    (funding > 0 ? -1 : 1) * 0.3 +
-    (v < 0.005 ? 1 : -1) * 0.3;
-
-  if (score > 0.25) return "BUY";
-  if (score < -0.25) return "SELL";
-  return "NEUTRAL";
-}
-
-function ChartBox(props) {
-  return React.createElement(
-    "div",
-    { className: "bg-white p-3 rounded shadow", style: { height: "260px" } },
-    React.createElement("div", { className: "font-medium mb-1" }, props.title),
-    React.createElement(
-      ResponsiveContainer,
-      null,
-      React.createElement(
-        LineChart,
-        { data: props.data },
-        React.createElement(CartesianGrid, { strokeDasharray: "3 3" }),
-        React.createElement(XAxis, { dataKey: "t", minTickGap: 20 }),
-        React.createElement(YAxis, null),
-        React.createElement(Tooltip, null),
-        React.createElement(Line, {
-          type: "monotone",
-          dataKey: "p",
-          stroke: "#4f46e5",
-          strokeWidth: 2,
-          dot: false
-        })
-      )
-    )
-  );
-}
-
-function Metric(props) {
-  return React.createElement(
-    "div",
-    { className: "bg-white p-4 rounded shadow text-center" },
-    React.createElement("div", { className: "text-sm text-gray-600" }, props.label),
-    React.createElement(
-      "div",
-      { className: `text-xl font-semibold ${props.color || ""}` },
-      props.value
-    )
-  );
-}
-
-function Dashboard() {
-  const [coins, setCoins] = useState([
-    { id: "bitcoin", symbol: "BTC" },
-    { id: "ethereum", symbol: "ETH" },
-    { id: "binancecoin", symbol: "BNB" }
-  ]);
-
-  const [selectedId, setSelectedId] = useState("bitcoin");
-  const [livePrice, setLivePrice] = useState(null);
-  const [chart30m, setChart30m] = useState([]);
-  const [chart1h, setChart1h] = useState([]);
-  const [chart4h, setChart4h] = useState([]);
-
-  const [inflow, setInflow] = useState(0);
-  const [volatility, setVolatility] = useState(0);
-  const [funding, setFunding] = useState(0);
-  const [signal, setSignal] = useState("NEUTRAL");
-
-  const [newCoinId, setNewCoinId] = useState("");
-  const [newCoinSymbol, setNewCoinSymbol] = useState("");
-
-  async function loadCharts() {
-    const d30 = await fetchCG(selectedId, 0.02, "minutely");
-    const d1 = await fetchCG(selectedId, 0.05, "minutely");
-    const d4 = await fetchCG(selectedId, 0.2, "minutely");
-
-    if (d30) setChart30m(d30.prices);
-    if (d1) setChart1h(d1.prices);
-    if (d4) setChart4h(d4.prices);
-
-    if (d4?.prices?.length) {
-      setVolatility(computeVol(d4.prices));
+  // Add new coin with CoinGecko ID and TradingView Symbol
+  document.getElementById('addCoinBtn').addEventListener('click', () => {
+    const newCoinId = document.getElementById('newCoinId').value.trim();
+    const newCoinSymbol = document.getElementById('newCoinSymbol').value.trim().toUpperCase();
+    if (newCoinId && newCoinSymbol) {
+      coins.push({id: newCoinId, symbol: newCoinSymbol, label: `${newCoinSymbol} (${newCoinId})`});
+      renderCoinList();
+      saveState(); // Save updated state to localStorage
     }
+    document.getElementById('newCoinId').value = '';
+    document.getElementById('newCoinSymbol').value = '';
+  });
 
-    const inflowSim = (Math.random() - 0.45) * 2000;
-    setInflow(inflowSim);
-
-    const fundingSim = (Math.random() - 0.5) * 0.05;
-    setFunding(fundingSim);
-
-    setSignal(decisionSignal(volatility, fundingSim, inflowSim));
-  }
-
-  useEffect(() => {
-    let t;
-    async function poll() {
-      try {
-        const r = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${selectedId}&vs_currencies=usd`
-        );
-        const j = await r.json();
-        setLivePrice(j[selectedId]?.usd ?? null);
-      } catch {}
-      t = setTimeout(poll, 10000);
-    }
-    poll();
-    return () => clearTimeout(t);
-  }, [selectedId]);
-
-  useEffect(() => {
-    loadCharts();
-    const id = setInterval(loadCharts, 30000);
-    return () => clearInterval(id);
-  }, [selectedId]);
-
-  function fmt(arr) {
-    return arr.map(([t, p]) => ({
-      t: new Date(t).toLocaleTimeString(),
-      p: +p.toFixed(2)
-    }));
-  }
-
-  function addCoin() {
-    if (!newCoinId.trim() || !newCoinSymbol.trim()) return;
-    setCoins([
-      ...coins,
-      { id: newCoinId.trim(), symbol: newCoinSymbol.trim().toUpperCase() }
-    ]);
-    setNewCoinId("");
-    setNewCoinSymbol("");
-  }
-
+  // Function to remove a coin
   function removeCoin(id) {
-    const updated = coins.filter(c => c.id !== id);
-    setCoins(updated);
-    if (selectedId === id && updated.length > 0) {
-      setSelectedId(updated[0].id);
+    coins = coins.filter(c => c.id !== id);
+    if (selectedCoin === id && coins.length > 0) {
+      selectedCoin = coins[0].id; // Select the first coin if the removed coin was selected
+    }
+    saveState(); // Save updated state to localStorage
+    renderCoinList();
+    loadDashboard(); // Reload dashboard with updated data
+  }
+
+  // Save state to localStorage
+  function saveState() {
+    localStorage.setItem('coins', JSON.stringify(coins));
+    localStorage.setItem('selectedCoin', selectedCoin);
+  }
+
+  // Fetch CoinGecko data
+  async function fetchCoinData(coinId) {
+    try {
+      const url = `https://api.coingecko.com/api/v3/coins/${coinId}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      // Log the data for debugging purposes
+      console.log('CoinGecko Data:', data);
+
+      if (!data || !data.market_data) {
+        throw new Error('Data not available');
+      }
+
+      // Live Price (current price)
+      const livePrice = data.market_data.current_price?.usd || 'N/A';
+      livePriceEl.innerText = livePrice !== 'N/A' ? `Live Price: $${livePrice.toLocaleString()}` : 'Live Price: N/A';
+
+      // Inflows (24h volume)
+      const inflows = data.market_data.total_volumes?.usd || 'N/A';
+      inflowEl.innerText = inflows !== 'N/A' ? `$${inflows.toLocaleString()}` : inflows;
+
+      // Change color of inflows based on whether the value is positive or negative
+      if (inflows !== 'N/A') {
+        inflowEl.style.color = inflows > 0 ? 'green' : 'red';  // Positive is green, negative is red
+      }
+
+      // Volatility (24h price change percentage)
+      const volatility = data.market_data.price_change_percentage_24h || 'N/A';
+      volatilityEl.innerText = `${volatility}%`;
+
+      // Funding Rate (for Binance)
+      const fundingUrl = `https://fapi.binance.com/fapi/v1/fundingRate?symbol=${coinId.toUpperCase()}USDT`;
+      const fundingRes = await fetch(fundingUrl);
+      const fundingData = await fundingRes.json();
+
+      const fundingRate = fundingData[fundingData.length - 1]?.fundingRate || 'N/A';
+      fundingEl.innerText = fundingRate !== 'N/A' && fundingRate !== 0 ? `${(fundingRate * 100).toFixed(2)}%` : 'N/A';
+
+      // Signal (simple calculation for demonstration)
+      const signal = calculateSignal(data);
+      signalEl.innerText = signal;
+
+      // Predicted Signal (Based on a simple condition)
+      const predictedSignal = calculatePredictedSignal(data);
+      predictedSignalEl.innerText = predictedSignal !== 'N/A' ? `Predicted Signal: ${predictedSignal}` : 'Predicted Signal: N/A';
+
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      inflowEl.innerText = 'Error';
+      volatilityEl.innerText = 'Error';
+      fundingEl.innerText = 'Error';
+      signalEl.innerText = 'Error';
+      predictedSignalEl.innerText = 'Error';
     }
   }
 
-  return React.createElement(
-    "div",
-    { className: "p-4 max-w-7xl mx-auto" },
-    React.createElement("h1", { className: "text-2xl font-semibold mb-4" }, "Crypto Dashboard"),
+  // Function to calculate signal (simple logic based on volatility)
+  function calculateSignal(data) {
+    const volatility = data.market_data.price_change_percentage_24h;
+    if (volatility > 10) return 'SELL';
+    if (volatility < 5) return 'BUY';
+    return 'NEUTRAL';
+  }
 
-    /* Coin Manager */
-    React.createElement(
-      "div",
-      { className: "border p-4 rounded mb-4 bg-white" },
-      React.createElement("h2", { className: "font-semibold mb-2" }, "Coin Manager"),
-      React.createElement("div", { className: "mb-2" }, "Existing Coins:"),
-      React.createElement(
-        "div",
-        { className: "flex flex-wrap gap-2 mb-4" },
-        coins.map(c =>
-          React.createElement(
-            "div",
-            { key: c.id, className: "flex items-center gap-2 border px-2 py-1 rounded" },
-            React.createElement("span", null, c.symbol),
-            React.createElement(
-              "button",
-              { onClick: () => removeCoin(c.id), className: "text-red-600" },
-              "×"
-            )
-          )
-        )
-      ),
+  // Function to calculate predicted signal (dummy logic for demonstration)
+  function calculatePredictedSignal(data) {
+    const volatility = data.market_data.price_change_percentage_24h;
+    if (volatility > 8) return 'SELL';   // High volatility predicted sell
+    if (volatility < -5) return 'BUY';   // Significant negative volatility predicted buy
+    return 'NEUTRAL';                    // Otherwise neutral
+  }
 
-      React.createElement(
-        "div",
-        { className: "flex gap-2 mb-4" },
-        React.createElement("input", {
-          className: "border p-1 rounded",
-          placeholder: "coin id (bitcoin)",
-          value: newCoinId,
-          onChange: e => setNewCoinId(e.target.value)
-        }),
-        React.createElement("input", {
-          className: "border p-1 rounded",
-          placeholder: "symbol (BTC)",
-          value: newCoinSymbol,
-          onChange: e => setNewCoinSymbol(e.target.value)
-        }),
-        React.createElement(
-          "button",
-          { onClick: addCoin, className: "bg-blue-600 text-white px-3 py-1 rounded" },
-          "Add"
-        )
-      ),
+  // Update the live chart iframe source based on the selected coin
+  coinSelectEl.addEventListener('change', () => {
+    const selectedCoinId = coinSelectEl.value;
+    const selectedCoin = coins.find(c => c.id === selectedCoinId);
+    liveChartEl.src = `https://s.tradingview.com/widgetembed/?frameElementId=tv_btc&symbol=BINANCE:${selectedCoin.symbol}&interval=60&theme=dark`;
 
-      React.createElement(
-        "div",
-        null,
-        React.createElement(
-          "label",
-          { className: "mr-2 font-medium" },
-          "Select Coin:"
-        ),
-        React.createElement(
-          "select",
-          {
-            value: selectedId,
-            onChange: e => setSelectedId(e.target.value),
-            className: "border p-1 rounded"
-          },
-          coins.map(c =>
-            React.createElement("option", { key: c.id, value: c.id }, c.symbol)
-          )
-        )
-      )
-    ),
+    // Fetch data for the selected coin
+    fetchCoinData(selectedCoinId);
+  });
 
-    /* Live Price */
-    React.createElement(
-      "div",
-      { className: "bg-white p-4 rounded shadow mb-4" },
-      React.createElement(
-        "div",
-        { className: "text-lg font-medium" },
-        "Live Price: ",
-        livePrice ? `$${livePrice.toLocaleString()}` : "—"
-      )
-    ),
+  // Initial load
+  renderCoinList();
+  fetchCoinData(coins[0].id);
+  liveChartEl.src = `https://s.tradingview.com/widgetembed/?frameElementId=tv_btc&symbol=BINANCE:${coins[0].symbol}&interval=60&theme=dark`;
 
-    /* Three Charts */
-    React.createElement(
-      "div",
-      { className: "grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" },
-      React.createElement(ChartBox, { title: "30m", data: fmt(chart30m) }),
-      React.createElement(ChartBox, { title: "1h", data: fmt(chart1h) }),
-      React.createElement(ChartBox, { title: "4h", data: fmt(chart4h) })
-    ),
+  // Poll for updates (Every 15 minutes for live data)
+  setInterval(() => fetchCoinData(selectedCoin), 900000); // Refresh every 15 minutes
 
-    /* Bottom panel */
-    React.createElement(
-      "div",
-      { className: "grid grid-cols-1 md:grid-cols-4 gap-4" },
-      React.createElement(Metric, {
-        label: "Inflows",
-        value: inflow.toFixed(0),
-        color: inflow > 0 ? "text-green-600" : "text-red-600"
-      }),
-      React.createElement(Metric, {
-        label: "Volatility",
-        value: volatility.toFixed(5)
-      }),
-      React.createElement(Metric, {
-        label: "Funding",
-        value: (funding * 100).toFixed(3) + "%",
-        color: funding >= 0 ? "text-green-600" : "text-red-600"
-      }),
-      React.createElement(Metric, {
-        label: "Signal",
-        value: signal,
-        color:
-          signal === "BUY"
-            ? "text-green-600"
-            : signal === "SELL"
-            ? "text-red-600"
-            : "text-gray-600"
-      })
-    )
-  );
-}
+});
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  React.createElement(Dashboard)
-);
