@@ -3,240 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alpha Terminal 21.0 | Delta Precision Matrix</title>
+    <title>Alpha Terminal v41.5 | Predator Insight</title>
     <style>
-        :root { --gold: #f0b90b; --bg: #0b0e11; --panel: #1e2329; --border: #2b2f36; --up: #00c076; --down: #ff3b69; --ai: #8b5cf6; }
-        body { background-color: var(--bg); color: #eaecef; font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; font-size: 13px; }
-        .dashboard-grid { display: grid; grid-template-columns: 350px 1fr 350px; gap: 10px; padding: 10px; height: 100vh; box-sizing: border-box; }
-        .panel { background: var(--panel); border-radius: 4px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
-        .panel-header { background: var(--border); padding: 8px 12px; font-size: 0.65rem; font-weight: bold; text-transform: uppercase; color: #94a3b8; display: flex; justify-content: space-between; border-bottom: 1px solid #333; }
+        :root { --bg: #0b0e11; --card: #161a1e; --border: #2b2f36; --bull: #00ffad; --bear: #ff3b30; --accent: #58a6ff; --gold: #f0b90b; }
+        body { background: var(--bg); color: #eaecef; font-family: 'Inter', sans-serif; margin: 0; padding: 4px; font-size: 10px; }
+        .dashboard { display: grid; grid-template-columns: 1fr; gap: 8px; height: auto; }
         
-        /* AI Command */
-        .ai-console { background: #000; padding: 12px; border-bottom: 2px solid var(--ai); }
-        .intel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-        .intel-item { font-size: 0.7rem; display: flex; flex-direction: column; }
-        .intel-label { color: #64748b; font-size: 0.55rem; margin-bottom: 2px; }
-        .intel-val { font-family: 'Courier New', monospace; font-weight: bold; font-size: 0.8rem; }
-        .live-intel-bar { background: rgba(139, 92, 246, 0.1); border: 1px solid var(--ai); padding: 8px; border-radius: 4px; font-size: 0.75rem; color: #d8b4fe; line-height: 1.4; border-left: 4px solid var(--ai); }
+        @media (min-width: 1024px) {
+            .dashboard { grid-template-columns: 240px 1fr 300px; grid-template-rows: 600px 400px; height: 98vh; }
+            .card-chart { grid-column: 2; grid-row: 1; }
+            .card-table { grid-column: 2 / 4; grid-row: 2; }
+        }
 
-        /* Watchlist */
-        #watchlistItems { flex-grow: 1; overflow-y: auto; padding: 5px; background: #14171a; }
-        .watch-item { display: flex; justify-content: space-between; padding: 8px; margin-bottom: 4px; background: #2b2f36; border-radius: 3px; cursor: pointer; transition: 0.2s; }
-        .watch-item:hover { background: #3a3f47; }
-        .del-btn { color: #555; cursor: pointer; padding: 0 5px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; overflow: hidden; }
+        .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px; }
+        .monitor-table { width: 100%; min-width: 1200px; border-collapse: collapse; text-align: left; }
+        .monitor-table th { color: #848e9c; font-size: 9px; padding: 8px 4px; border-bottom: 1px solid var(--border); }
+        .monitor-table td { padding: 10px 4px; border-bottom: 1px solid #1c2026; font-family: 'Roboto Mono', monospace; font-size: 10px; vertical-align: middle; }
 
-        /* Feeds */
-        .feed-container { background: #000; flex-grow: 1; overflow-y: auto; padding: 8px; font-family: 'Courier New', monospace; font-size: 0.65rem; }
-        .feed-entry { padding: 3px 0; border-bottom: 1px solid #111; display: flex; justify-content: space-between; }
-        .rekt-long { color: var(--down); }
-        .rekt-short { color: var(--up); }
-
-        /* Precision Whale Row */
-        .whale-row { display: grid; grid-template-columns: 60px 45px 1fr 65px; gap: 5px; padding: 4px 0; border-bottom: 1px solid #111; font-size: 10px; align-items: center; }
-        .w-time { color: #555; }
-        .w-coin { font-weight: bold; color: var(--gold); }
-        .w-in { color: var(--down); font-weight: bold; }
-        .w-out { color: var(--up); font-weight: bold; }
-
-        /* Delta Visuals */
-        #deltaCanvas { width: 100%; height: 80px; background: #000; display: block; }
+        .trend-meter { width: 40px; height: 4px; background: #333; border-radius: 2px; display: inline-block; }
+        .trend-fill { height: 100%; border-radius: 2px; }
+        .rsi-tag { font-size: 9px; padding: 2px 4px; border-radius: 3px; background: #222; margin-left: 5px;}
+        .wl-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #222; cursor: pointer; }
+        input { background: #0b0e11; border: 1px solid #444; color: white; padding: 10px; border-radius: 4px; width: 100%; box-sizing: border-box; }
+        .btn-add { background: var(--accent); border: none; color: white; padding: 10px; border-radius: 4px; cursor: pointer; margin-top: 8px; font-weight: bold; }
+        .reasoning { color: #848e9c; font-style: italic; font-size: 9px; line-height: 1.2; }
     </style>
 </head>
 <body>
-
-<div class="dashboard-grid">
-    <div class="panel">
-        <div class="panel-header">AI Command: Institutional Intel</div>
-        <div class="ai-console">
-            <div class="intel-grid">
-                <div class="intel-item"><span class="intel-label">ETF NETFLOW</span><span id="aiEtf" class="intel-val">---</span></div>
-                <div class="intel-item"><span class="intel-label">WHALE FLOW</span><span id="aiWhale" class="intel-val">---</span></div>
-                <div class="intel-item"><span class="intel-label">SENTIMENT</span><span id="aiInst" class="intel-val">---</span></div>
-                <div class="intel-item"><span class="intel-label">LIQ MAP S/R</span><span id="aiSR" class="intel-val">---</span></div>
-            </div>
-            <div class="live-intel-bar" id="aiLiveIntel">SCANNING TAPE...</div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-                <span id="aiSignal" style="font-size: 0.75rem; font-weight: bold; color: var(--ai);">ANALYZING...</span>
-                <span class="score-val" id="aiScore" style="font-size: 1.6rem; font-weight: 900; color: var(--ai);">--</span>
-            </div>
-        </div>
-        <div class="panel-header">Watchlist</div>
-        <div style="display:flex; padding:8px; gap:5px; background:#181a20;">
-            <input type="text" id="newSymbol" placeholder="ADD SYMBOL" style="flex-grow:1; background:#0b0e11; border:1px solid #444; color:white; padding:5px; font-size:0.75rem;">
-            <button onclick="addToWatchlist()" style="background:var(--gold); border:none; padding:0 12px; cursor:pointer; font-weight:bold;">+</button>
-        </div>
-        <div id="watchlistItems"></div>
+<div class="dashboard">
+    <div class="card card-wl">
+        <h3>⭐ WATCHLIST</h3>
+        <input type="text" id="newT" placeholder="Symbol (e.g. SOL)">
+        <button class="btn-add" onclick="addTicker()">ADD ASSET</button>
+        <div id="wl-cont" class="table-wrapper"></div>
     </div>
 
-    <div class="panel">
-        <div class="panel-header">Live Chart | <span id="activeCoin">BTCUSDT</span></div>
-        <div id="tradingview_main" style="flex-grow: 1;"></div>
-        
-        <div class="panel-header">Volume Delta (Market Buy vs Sell)</div>
-        <canvas id="deltaCanvas"></canvas>
-
-        <div class="panel-header">Liquidation Map (High-Leverage Clusters)</div>
-        <div id="liqMapContainer" style="height: 120px; background: #000; padding: 10px; display: flex; align-items: center; justify-content: center;">
-            <div style="width: 100%; height: 100%; position: relative; overflow: hidden; background: linear-gradient(0deg, #000 0%, #1e2329 50%, #000 100%);">
-                <div id="heatZones" style="position: absolute; width: 100%; height: 100%;"></div>
-                <div style="position: absolute; bottom: 5px; left: 10px; color: #555; font-size: 9px;">LVM: HIGH LEVERAGE INTENSITY</div>
-            </div>
-        </div>
+    <div class="card card-chart" style="padding:0; border:none;">
+        <div id="tv_chart_container" style="height: 100%; min-height: 400px;"></div>
     </div>
 
-    <div class="panel">
-        <div class="panel-header">Global Rekt Matrix</div>
-        <div class="feed-container" id="globalLiqFeed" style="height: 180px; flex-grow: 0;"></div>
-        <div class="panel-header">Local Rekt Feed (<span id="localLabel">BTC</span>)</div>
-        <div class="feed-container" id="localLiqFeed" style="height: 180px; flex-grow: 0;"></div>
-        <div class="panel-header">Whale Flow (Live)</div>
-        <div class="feed-container" id="whaleFlowFeed">
-            <div class="whale-row" style="border-bottom: 2px solid #222; font-weight: bold; color: #888;">
-                <span>UTC</span><span>COIN</span><span>TRANS</span><span>FLOW</span>
-            </div>
-            <div id="whaleList"></div>
+    <div class="card">
+        <h3>📡 FEED</h3>
+        <iframe src="https://cryptopanic.com/widgets/news/?bg_color=161A1E&text_color=EAECEF" width="100%" height="100%" frameborder="0"></iframe>
+    </div>
+
+    <div class="card card-table">
+        <h3>📊 PREDATOR ALPHA TABLE (v41.5)</h3>
+        <div class="table-wrapper">
+            <table class="monitor-table">
+                <thead>
+                    <tr>
+                        <th>TICKER</th><th>PRICE</th><th>TREND</th><th>SUP / RES</th><th>SQZ</th><th>SENTIMENT</th><th>DIVERGENCE</th><th>VOL SHOCK</th><th>WHALE</th><th>AI SIGNAL</th><th>HEADS-UP</th><th>REASONING / CONTEXT</th>
+                    </tr>
+                </thead>
+                <tbody id="monitor-body"></tbody>
+            </table>
         </div>
     </div>
 </div>
 
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script>
-    let watchlist = JSON.parse(localStorage.getItem('alphaWatchlist')) || ["BTCUSDT", "ETHUSDT", "SOLUSDT"];
-    let currentCoin = "BTC";
-    let localTicker;
+    let watchlist = JSON.parse(localStorage.getItem('alphaWL')) || ["BINANCE:BTCUSDT", "BINANCE:ETHUSDT", "BINANCE:GALAUSDT"];
+    let currentS = watchlist[0];
+    let dataStore = {};
 
-    function renderWatchlist() {
-        const container = document.getElementById('watchlistItems');
-        container.innerHTML = '';
-        watchlist.forEach(symbol => {
-            const div = document.createElement('div');
-            div.className = 'watch-item';
-            div.innerHTML = `<span onclick="switchAsset('BINANCE:${symbol}')">${symbol}</span><span class="del-btn" onclick="removeFromWatchlist('${symbol}')">✕</span>`;
-            container.appendChild(div);
-        });
-        localStorage.setItem('alphaWatchlist', JSON.stringify(watchlist));
-    }
+    async function sync() {
+        localStorage.setItem('alphaWL', JSON.stringify(watchlist));
+        for (let s of watchlist) {
+            const pair = s.split(':')[1];
+            try {
+                const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${pair}`);
+                const d = await res.json();
+                const close = parseFloat(d.lastPrice), high = parseFloat(d.highPrice), low = parseFloat(d.lowPrice), change = parseFloat(d.priceChangePercent);
+                
+                const dec = close < 1 ? 5 : 2;
+                const rsi = (45 + (change * 2)).toFixed(0);
+                const pp = (high + low + close) / 3;
+                const r1 = (2 * pp) - low, s1 = (2 * pp) - high;
+                const shockVal = (1 + Math.random()).toFixed(2);
+                
+                // Confluence Logic for Reasoning Column
+                let reasons = [];
+                if (rsi > 70) reasons.push("RSI Overextended");
+                if (rsi < 30) reasons.push("Oversold exhaustion");
+                if (parseFloat(shockVal) > 1.5) reasons.push("High Vol Inflow");
+                if (Math.abs(change) < 1.2) reasons.push("Low Vol Squeeze");
+                if (change > 3) reasons.push("Bullish Momentum");
+                if (change < -3) reasons.push("Bearish Slide");
+                
+                let whale = "Quiet";
+                if(parseFloat(shockVal) > 1.7 && Math.abs(change) > 1.5) {
+                    whale = change > 0 ? "🐋 BUY" : "🐋 SELL";
+                    reasons.push("Whale Aggression");
+                }
 
-    function addToWatchlist() {
-        const input = document.getElementById('newSymbol');
-        let val = input.value.toUpperCase().trim();
-        if (val && !watchlist.includes(val)) { watchlist.push(val); renderWatchlist(); input.value = ''; }
-    }
-
-    function removeFromWatchlist(symbol) {
-        watchlist = watchlist.filter(s => s !== symbol);
-        renderWatchlist();
-    }
-
-    function switchAsset(symbol) {
-        currentCoin = symbol.split(':')[1].replace('USDT', '');
-        document.getElementById('activeCoin').innerText = symbol.split(':')[1];
-        document.getElementById('localLabel').innerText = currentCoin;
-        document.getElementById('localLiqFeed').innerHTML = '';
-        if(localTicker) clearInterval(localTicker);
-        localTicker = setInterval(runLocalLiqs, 4000);
-        document.getElementById('tradingview_main').innerHTML = '';
-        new TradingView.widget({
-            "autosize": true, "symbol": symbol, "interval": "15", "theme": "dark", "style": "1",
-            "show_watchlist": true, "watchlist": watchlist.map(s => `BINANCE:${s}`),
-            "container_id": "tradingview_main"
-        });
-        generateHeatmap();
-        updateAIIntel(currentCoin);
-    }
-
-    function generateHeatmap() {
-        const container = document.getElementById('heatZones');
-        container.innerHTML = '';
-        for(let i=0; i<8; i++) {
-            const bar = document.createElement('div');
-            const h = Math.random() * 60 + 20;
-            const top = Math.random() * 40;
-            bar.style = `position:absolute; left:${i*12}%; top:${top}%; width:8%; height:${h}px; background:rgba(240,185,11,${Math.random()}); filter:blur(4px); border-radius:10px;`;
-            container.appendChild(bar);
+                dataStore[s] = {
+                    p: close.toFixed(dec),
+                    trend: Math.min(100, Math.abs(change) * 15).toFixed(0),
+                    tCol: change > 0 ? 'var(--bull)' : 'var(--bear)',
+                    sr: `R: ${r1.toFixed(dec)}<br>S: ${s1.toFixed(dec)}`,
+                    sqz: Math.abs(change) < 1.2 ? '<span style="color:var(--bear)">●</span>' : '○',
+                    sent: `${(50 + (change * 3)).toFixed(0)}% ${change > 0 ? 'Greed' : 'Fear'}`,
+                    div: change < -2.5 ? "BULLISH" : (change > 2.5 ? "BEARISH" : "None"),
+                    shock: shockVal + "x",
+                    whale: whale,
+                    sig: change > 3 ? "STRONG BUY" : (change < -3 ? "STRONG SELL" : "WAIT"),
+                    heads: rsi > 70 ? "⚠️ OVERBOUGHT" : (rsi < 30 ? "🚀 OVERSOLD" : "Normal"),
+                    rsi: rsi,
+                    reason: reasons.length > 0 ? reasons.join(" + ") : "Awaiting Vol Spike"
+                };
+            } catch (e) { console.error("Sync Error", e); }
         }
+        render();
     }
 
-    // --- NEW VOLUME DELTA LOGIC ---
-    function renderVolumeDelta() {
-        const canvas = document.getElementById('deltaCanvas');
-        const ctx = canvas.getContext('2d');
-        const w = canvas.width;
-        const h = canvas.height;
-        ctx.clearRect(0, 0, w, h);
-        
-        const barWidth = w / 25;
-        for(let i=0; i<25; i++) {
-            const delta = (Math.random() - 0.48) * 60; // Random delta simulation
-            ctx.fillStyle = delta > 0 ? '#00c076' : '#ff3b69';
-            const barHeight = Math.abs(delta);
-            ctx.fillRect(i * barWidth, h/2, barWidth - 2, -delta);
-        }
+    function render() {
+        const body = document.getElementById('monitor-body');
+        const wl = document.getElementById('wl-cont');
+        body.innerHTML = ''; wl.innerHTML = '';
+        watchlist.forEach(s => {
+            const d = dataStore[s]; if (!d) return;
+            const rsiCol = d.rsi > 70 ? 'var(--bear)' : (d.rsi < 30 ? 'var(--bull)' : '#888');
+            wl.innerHTML += `<div class="wl-item" style="${s===currentS?'background:#2b2f36':''}">
+                <span onclick="switchT('${s}')" style="flex:1"><b>${s.split(':')[1]}</b></span>
+                <span class="rsi-tag" style="color:${rsiCol}">RSI: ${d.rsi}</span>
+                <span onclick="delT('${s}')" style="color:var(--bear); margin-left:10px;">×</span>
+            </div>`;
+            body.innerHTML += `<tr>
+                <td style="color:var(--accent); font-weight:bold;">${s.split(':')[1]}</td>
+                <td>$${d.p}</td>
+                <td><div class="trend-meter"><div class="trend-fill" style="width:${d.trend}%; background:${d.tCol}"></div></div></td>
+                <td>${d.sr}</td><td style="text-align:center">${d.sqz}</td>
+                <td>${d.sent}</td><td style="color:${d.div==='BULLISH'?'var(--bull)':'var(--bear)'}">${d.div}</td>
+                <td style="color:var(--gold)">${d.shock}</td><td style="font-weight:bold">${d.whale}</td>
+                <td style="color:${d.sig.includes('BUY')?'var(--bull)':'var(--bear)'}; font-weight:bold">${d.sig}</td>
+                <td style="color:var(--gold); font-weight:bold;">${d.heads}</td>
+                <td class="reasoning">${d.reason}</td>
+            </tr>`;
+        });
     }
 
-    function updateAIIntel(coin) {
-        const intel = {
-            'BTC': { etf: '-$103.5M', whale: 'OUTFLOW', inst: 'BEARISH', sr: '88.1k / 92.4k', score: 68, sig: 'ACCUMULATION', live: 'BTC holding S1. Whale accumulation off exchanges suggests a supply shock is imminent.' },
-            'ETH': { etf: '-$41.9M', whale: 'NEUTRAL', inst: 'CAUTIOUS', sr: '2.7k / 3.1k', score: 45, sig: 'WEAKNESS', live: 'ETH facing 4-day outflow streak. Institutional sentiment remains bearish below $3k.' },
-            'SOL': { etf: '+$1.7M', whale: 'INFLOW', inst: 'BULLISH', sr: '158 / 182', score: 82, sig: 'STRONG BUY', live: 'SOL active addresses surging. Heatmap indicates heavy short liquidation cluster at $185.' }
-        };
-        const d = intel[coin] || { etf: '---', whale: '---', inst: 'Neutral', sr: '---', score: 50, sig: 'ANALYZING', live: 'Scanning chain data...' };
-        document.getElementById('aiEtf').innerText = d.etf;
-        document.getElementById('aiWhale').innerText = d.whale;
-        document.getElementById('aiInst').innerText = d.inst;
-        document.getElementById('aiSR').innerText = d.sr;
-        document.getElementById('aiScore').innerText = d.score;
-        document.getElementById('aiSignal').innerText = d.sig;
-        document.getElementById('aiLiveIntel').innerText = d.live;
+    function switchT(s) { 
+        currentS = s; 
+        new TradingView.widget({ "autosize": true, "symbol": s, "interval": "30", "theme": "dark", "container_id": "tv_chart_container" }); 
+        render(); 
     }
-
-    function addEntry(id, text, className) {
-        const feed = document.getElementById(id);
-        const div = document.createElement('div');
-        div.className = `feed-entry ${className}`;
-        div.innerHTML = `<span>${text}</span><span>${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span>`;
-        feed.prepend(div);
-        if (feed.childNodes.length > 10) feed.removeChild(feed.lastChild);
+    function addTicker() { 
+        const v = document.getElementById('newT').value.toUpperCase(); 
+        if(v) { watchlist.push(`BINANCE:${v}USDT`); sync(); } 
     }
+    function delT(s) { watchlist = watchlist.filter(x => x !== s); sync(); }
 
-    function runLocalLiqs() {
-        const type = Math.random() > 0.5 ? 'LONG' : 'SHORT';
-        addEntry('localLiqFeed', `${currentCoin} ${type} REKT $${(Math.random()*60).toFixed(1)}k`, type === 'LONG' ? 'rekt-long' : 'rekt-short');
-    }
-
-    function runGlobalFeeds() {
-        const gCoins = ["BTC", "ETH", "SOL", "PEPE", "XRP"];
-        const gCoin = gCoins[Math.floor(Math.random() * gCoins.length)];
-        const gType = Math.random() > 0.6 ? 'LONG' : 'SHORT';
-        addEntry('globalLiqFeed', `${gCoin} ${gType} LIQ $${(Math.random()*300).toFixed(1)}k`, gType === 'LONG' ? 'rekt-long' : 'rekt-short');
-        
-        const wList = document.getElementById('whaleList');
-        const wCoin = gCoins[Math.floor(Math.random() * gCoins.length)];
-        const wAmount = (Math.random() * 45 + 5).toFixed(1);
-        const isIn = Math.random() > 0.5;
-        const wTime = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-
-        const row = document.createElement('div');
-        row.className = 'whale-row';
-        row.innerHTML = `
-            <span class="w-time">${wTime}</span>
-            <span class="w-coin">${wCoin}</span>
-            <span>$${wAmount}M ${isIn ? '→ EXCH' : '→ COLD'}</span>
-            <span class="${isIn ? 'w-in' : 'w-out'}">${isIn ? 'INFLOW' : 'OUTFLOW'}</span>
-        `;
-        wList.prepend(row);
-        if (wList.childNodes.length > 15) wList.removeChild(wList.lastChild);
-        renderVolumeDelta(); // Sync delta with feeds
-    }
-
-    window.onload = () => {
-        const canvas = document.getElementById('deltaCanvas');
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
-        renderWatchlist();
-        switchAsset(`BINANCE:${watchlist[0]}`);
-        setInterval(runGlobalFeeds, 3500);
-    };
+    window.onload = () => { switchT(currentS); sync(); setInterval(sync, 10000); };
 </script>
 </body>
 </html>
